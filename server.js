@@ -70,19 +70,23 @@ const wss = new WebSocketServer({ server, path: '/ws/twilio' });
 
 wss.on('connection', async (twilio) => {
   // Connect to ElevenLabs realtime WS
+  console.log('New Twilio WS connection');
   const eleven = new WebSocket(
     'wss://api.elevenlabs.io/v1/convai/conversation', // ElevenLabs realtime WS
     { headers: { 'xi-api-key': XI_API_KEY } }
   );
+  console.log('ElevenLabs WS connecting...');
 
   let ready = false;
-  eleven.on('open', () => { ready = true; });
+  eleven.on('open', () => { ready = true; console.log('ElevenLabs WS connected'); });
 
   // Receive Twilio media frames
   twilio.on('message', async (msg) => {
+    console.log('Received Twilio message');
     const data = JSON.parse(msg.toString());
 
     if (data.event === 'media') {
+        console.log('Received Twilio media');
       // decode μ-law base64 → PCM16 @ 8k
       const ulaw = Buffer.from(data.media.payload, 'base64');
       const pcm8k = Buffer.from(decodeMulaw(ulaw)); // 16-bit PCM @ 8k
@@ -91,18 +95,24 @@ wss.on('connection', async (twilio) => {
       const pcm16k = await upsamplePcm16(pcm8k);
 
       if (ready) {
+        console.log('Sending audio to ElevenLabs');
         eleven.send(JSON.stringify({
           type: 'input_audio_buffer.append',
           audio: pcm16k.toString('base64')
         }));
       }
     } else if (data.event === 'stop') {
-      if (ready) eleven.send(JSON.stringify({ type: 'input_audio_buffer.commit' }));
+        console.log('Twilio stream ended');
+      if (ready) {
+        console.log('Notifying ElevenLabs of stream end');
+        eleven.send(JSON.stringify({ type: 'input_audio_buffer.commit' }));
+        }
     }
   });
 
   // Receive transcripts from ElevenLabs and forward to n8n
   eleven.on('message', async (evt) => {
+    console.log('Received ElevenLabs message');
     const e = JSON.parse(evt.toString());
     if (e.type === 'transcript' || e.type === 'response.transcript.delta') {
       await fetch(N8N_WEBHOOK, {
@@ -110,6 +120,7 @@ wss.on('connection', async (twilio) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(e)
       });
+        console.log('Forwarded transcript to n8n');
     }
   });
 });
