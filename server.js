@@ -64,7 +64,7 @@ function upsamplePcm16(rawPcm8k) {
 }
 
 const server = http.createServer(app);
-const wss = new WebSocketServer({ server, path: '/stream' });
+const wss = new WebSocketServer({ server, path: '/ws/twilio' });
 
 wss.on('connection', async (twilio) => {
   // Connect to ElevenLabs realtime WS
