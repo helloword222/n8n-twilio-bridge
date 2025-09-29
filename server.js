@@ -36,11 +36,12 @@ app.post('/voice', (req, res) => {
 // --- Existing WSS bridge for Twilio Media Streams ---
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/stream' });
-
+const prod_n8n = 'https://devops-novitas.app.n8n.cloud/webhook/1e766315-e1ab-4256-aa2c-fd51db320566/webhook';
+const test_n8n = 'https://devops-novitas.app.n8n.cloud/webhook-test/1e766315-e1ab-4256-aa2c-fd51db320566/webhook';
 wss.on('connection', (ws) => {
   ws.on('message', async (msg) => {
     // Forward raw Twilio media/JSON messages into n8n
-    await fetch('https://devops-novitas.app.n8n.cloud/webhook/1e766315-e1ab-4256-aa2c-fd51db320566/webhook', {
+    await fetch(test_n8n, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: msg
