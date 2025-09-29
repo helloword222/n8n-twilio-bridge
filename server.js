@@ -33,6 +33,7 @@ app.post('/voice', (req, res) => {
   res.send(twiml);
 });
 
+const N8N_WEBHOOK = process.env.N8N_WEBHOOK_URL;
 const XI_API_KEY = process.env.ELEVEN_API_KEY;
 
 // helper: spawn ffmpeg to upsample 8k PCM16 → 16k PCM16 (mono)
