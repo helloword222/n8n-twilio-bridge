@@ -1,0 +1,14 @@
+{
+  "name": "twilio-n8n-bridge",
+  "version": "1.0.0",
+  "description": "A WebSocket bridge to forward Twilio Media Streams into n8n via HTTP",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.17.0",
+    "node-fetch": "^2.6.9"
+  }
+}
