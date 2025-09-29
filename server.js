@@ -72,7 +72,7 @@ wss.on('connection', async (twilio) => {
   // Connect to ElevenLabs realtime WS
   console.log('New Twilio WS connection');
   const eleven = new WebSocket(
-    'wss://api.elevenlabs.io/v1/convai/conversation', // ElevenLabs realtime WS
+    'wss://api.elevenlabs.io/v1/convai/conversation?agent_id=agent_0601k6brczjefm9vfcwp0nhdycxz', // ElevenLabs realtime WS
     { headers: { 'xi-api-key': XI_API_KEY } }
   );
   console.log('ElevenLabs WS connecting...');
