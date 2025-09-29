@@ -11,14 +11,19 @@ app.post('/voice', (req, res) => {
   // Example TwiML: greet, gather speech/DTMF, then (optionally) start a Media Stream
   const twiml = `
     <Response>
-      <Say>Welcome Novitas Agent.</Say>
-      <!-- Optional: start a unidirectional media stream to your WSS bridge -->
-      <Connect>
+        <Say>123</Say>
         <Start>
-            <Stream url="wss://n8n-twilio-bridge-production.up.railway.app/stream" track="both_tracks" name="n8n-audio"/>
+            <Stream url="wss://n8n-twilio-bridge-production.up.railway.app/stream"
+                    track="both_tracks"
+                    name="n8n-audio"/>
         </Start>
-      </Connect>
-    </Response>
+
+        <!-- Keep the call alive -->
+        <Pause length="60"/>
+        <!-- Optionally loop by redirecting back to this TwiML to extend beyond 60s -->
+        <Redirect method="POST">/voice</Redirect>
+        </Response>
+
   `.trim();
 
   // Tell Twilio we're returning XML/TwiML
