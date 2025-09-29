@@ -32,8 +32,8 @@ app.post('/voice', (req, res) => {
   res.send(twiml);
 });
 
-const N8N_WEBHOOK = process.env.N8N_WEBHOOK_URL;
-const XI_API_KEY = process.env.ELEVEN_API_KEY;
+const N8N_WEBHOOK = process.env.N8N_WEBHOOK_URL ?? 'https://devops-novitas.app.n8n.cloud/webhook-test/e98906dc-4037-4c1f-b4eb-4b677aa986df';
+const XI_API_KEY = process.env.ELEVEN_API_KEY ?? 'sk_5a25eba63983dbfc027cfbc8581836d411155f8362f8c3a7';
 
 // μ-law decoder (8-bit → PCM16)
 function decodeMulaw(buffer) {
