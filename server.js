@@ -1,7 +1,7 @@
 // server.js
 const http = require('http');
 const express = require('express');
-const { WebSocketServer } = require('ws');
+const { WebSocketServer, WebSocket } = require('ws');
 const fetch = require('node-fetch');
 const { spawn } = require('child_process');
 
