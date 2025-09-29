@@ -1,0 +1,9 @@
+<Response>
+  <Say>Connecting you to our assistant.</Say>
+  <Start>
+    <Stream url="wss://n8n-twilio-bridge.vercel.app//stream"
+            track="both_tracks"
+            name="n8n-audio" />
+  </Start>
+  <!-- Optionally continue IVR or <Dial> while the fork runs -->
+</Response>
