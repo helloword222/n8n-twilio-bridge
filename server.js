@@ -114,8 +114,8 @@ wss.on('connection', async (twilio) => {
   eleven.on('message', async (evt) => {
     console.log('Received ElevenLabs message');
     const e = JSON.parse(evt.toString());
+    console.log('ElevenLabs transcript:', JSON.stringify(e));
     if (e.type === 'transcript' || e.type === 'response.transcript.delta') {
-        console.log('ElevenLabs transcript:', JSON.stringify(e));
       await fetch(N8N_WEBHOOK, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
