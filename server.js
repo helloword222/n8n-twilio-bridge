@@ -21,7 +21,7 @@ app.post('/voice', (req, res) => {
         <!-- Keep the call alive -->
         <Pause length="60"/>
         <!-- Optionally loop by redirecting back to this TwiML to extend beyond 60s -->
-        <Redirect method="POST">/voice</Redirect>
+        <!--Redirect method="POST">/voice</Redirect-->
         </Response>
 
   `.trim();
