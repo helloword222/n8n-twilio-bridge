@@ -3,7 +3,6 @@ const http = require('http');
 const express = require('express');
 const { WebSocketServer } = require('ws');
 const fetch = require('node-fetch');
-const { decode } = require('mulaw'); // μ-law → PCM16
 const { spawn } = require('child_process');
 
 const app = express();
@@ -36,6 +35,20 @@ app.post('/voice', (req, res) => {
 const N8N_WEBHOOK = process.env.N8N_WEBHOOK_URL;
 const XI_API_KEY = process.env.ELEVEN_API_KEY;
 
+// μ-law decoder (8-bit → PCM16)
+function decodeMulaw(buffer) {
+  const out = new Int16Array(buffer.length);
+  for (let i = 0; i < buffer.length; i++) {
+    let uVal = ~buffer[i];
+    let sign = uVal & 0x80;
+    let exponent = (uVal >> 4) & 0x07;
+    let mantissa = uVal & 0x0F;
+    let magnitude = ((mantissa << 4) + 0x08) << (exponent + 3);
+    out[i] = sign ? (0x84 - magnitude) : (magnitude - 0x84);
+  }
+  return Buffer.from(out.buffer);
+}
+
 // helper: spawn ffmpeg to upsample 8k PCM16 → 16k PCM16 (mono)
 function upsamplePcm16(rawPcm8k) {
   return new Promise((resolve, reject) => {
@@ -49,6 +62,7 @@ function upsamplePcm16(rawPcm8k) {
     ff.stdin.end(rawPcm8k);
   });
 }
+
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/stream' });
 
@@ -69,7 +83,7 @@ wss.on('connection', async (twilio) => {
     if (data.event === 'media') {
       // decode μ-law base64 → PCM16 @ 8k
       const ulaw = Buffer.from(data.media.payload, 'base64');
-      const pcm8k = Buffer.from(decode(ulaw)); // 16-bit PCM @ 8k
+      const pcm8k = Buffer.from(decodeMulaw(ulaw)); // 16-bit PCM @ 8k
 
       // upsample to 16k for ElevenLabs
       const pcm16k = await upsamplePcm16(pcm8k);
