@@ -3,6 +3,8 @@ const http = require('http');
 const express = require('express');
 const { WebSocketServer } = require('ws');
 const fetch = require('node-fetch');
+const { decode } = require('mulaw'); // μ-law → PCM16
+const { spawn } = require('child_process');
 
 const app = express();
 
@@ -13,7 +15,7 @@ app.post('/voice', (req, res) => {
     <Response>
         <Say>123</Say>
         <Start>
-            <Stream url="wss://n8n-twilio-bridge-production.up.railway.app/stream"
+            <Stream url="wss://n8n-twilio-bridge-production.up.railway.app/ws/twilio"
                     track="both_tracks"
                     name="n8n-audio"/>
         </Start>
@@ -31,22 +33,68 @@ app.post('/voice', (req, res) => {
   res.send(twiml);
 });
 
+const XI_API_KEY = process.env.ELEVEN_API_KEY;
 
-
-// --- Existing WSS bridge for Twilio Media Streams ---
+// helper: spawn ffmpeg to upsample 8k PCM16 → 16k PCM16 (mono)
+function upsamplePcm16(rawPcm8k) {
+  return new Promise((resolve, reject) => {
+    const ff = spawn('ffmpeg', [
+      '-f','s16le','-ar','8000','-ac','1','-i','pipe:0',
+      '-f','s16le','-ar','16000','-ac','1','pipe:1'
+    ]);
+    const chunks = [];
+    ff.stdout.on('data', d => chunks.push(d));
+    ff.on('close', code => code === 0 ? resolve(Buffer.concat(chunks)) : reject(code));
+    ff.stdin.end(rawPcm8k);
+  });
+}
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/stream' });
-const prod_n8n = 'https://devops-novitas.app.n8n.cloud/webhook/1e766315-e1ab-4256-aa2c-fd51db320566/webhook';
-const test_n8n = 'https://devops-novitas.app.n8n.cloud/webhook-test/1e766315-e1ab-4256-aa2c-fd51db320566/webhook';
-wss.on('connection', (ws) => {
-  ws.on('message', async (msg) => {
-    // Forward raw Twilio media/JSON messages into n8n
-    await fetch(test_n8n, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: msg
-    });
+
+wss.on('connection', async (twilio) => {
+  // Connect to ElevenLabs realtime WS
+  const eleven = new WebSocket(
+    'wss://api.elevenlabs.io/v1/convai/conversation', // ElevenLabs realtime WS
+    { headers: { 'xi-api-key': XI_API_KEY } }
+  );
+
+  let ready = false;
+  eleven.on('open', () => { ready = true; });
+
+  // Receive Twilio media frames
+  twilio.on('message', async (msg) => {
+    const data = JSON.parse(msg.toString());
+
+    if (data.event === 'media') {
+      // decode μ-law base64 → PCM16 @ 8k
+      const ulaw = Buffer.from(data.media.payload, 'base64');
+      const pcm8k = Buffer.from(decode(ulaw)); // 16-bit PCM @ 8k
+
+      // upsample to 16k for ElevenLabs
+      const pcm16k = await upsamplePcm16(pcm8k);
+
+      if (ready) {
+        eleven.send(JSON.stringify({
+          type: 'input_audio_buffer.append',
+          audio: pcm16k.toString('base64')
+        }));
+      }
+    } else if (data.event === 'stop') {
+      if (ready) eleven.send(JSON.stringify({ type: 'input_audio_buffer.commit' }));
+    }
+  });
+
+  // Receive transcripts from ElevenLabs and forward to n8n
+  eleven.on('message', async (evt) => {
+    const e = JSON.parse(evt.toString());
+    if (e.type === 'transcript' || e.type === 'response.transcript.delta') {
+      await fetch(N8N_WEBHOOK, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(e)
+      });
+    }
   });
 });
 
-server.listen(8081, () => console.log('HTTP+WS server on :8080'));
+server.listen(8080, () => console.log('HTTP+WS server on :8080'));
