@@ -4,6 +4,8 @@ const express = require('express');
 const { WebSocketServer, WebSocket } = require('ws');
 const fetch = require('node-fetch');
 const { spawn } = require('child_process');
+const ffmpegPath = require('ffmpeg-static');
+
 
 const app = express();
 
@@ -52,7 +54,7 @@ function decodeMulaw(buffer) {
 // helper: spawn ffmpeg to upsample 8k PCM16 → 16k PCM16 (mono)
 function upsamplePcm16(rawPcm8k) {
   return new Promise((resolve, reject) => {
-    const ff = spawn('ffmpeg', [
+    const ff = spawn(ffmpegPath, [
       '-f','s16le','-ar','8000','-ac','1','-i','pipe:0',
       '-f','s16le','-ar','16000','-ac','1','pipe:1'
     ]);
